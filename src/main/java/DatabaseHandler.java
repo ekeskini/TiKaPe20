@@ -19,7 +19,7 @@ public class DatabaseHandler {
 		String name = scanner.nextLine();
 		
 		//Preparing a parametrised statement
-		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Location (name) VALUES(?)");
+		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Location(name) VALUES (?)");
 		pstatement.setString(1, name);
 		
 		//Executing statement and preparing for possible errors
@@ -39,7 +39,7 @@ public class DatabaseHandler {
 		String name = scanner.nextLine();
 		
 		//Preparing a parametrised statement
-		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Customer (name) Values(?)");
+		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Customer(name) Values (?)");
 		pstatement.setString(1, name);
 		
 		try {
@@ -147,9 +147,46 @@ public class DatabaseHandler {
 		pstatement.setInt(1, tracking_number);
 		pstatement.setInt(2, location_id);
 		pstatement.setString(3, description);
+		
+		try {
+			pstatement.executeUpdate();
+			System.out.println("Event added");
+		} catch (SQLException e) {
+			System.out.println("ERROR: There was a problem with adding the event. Please check your input and try again");
+		}
 	}
 	
-	
+	//Method for command 6: listing events of a certain parcel
+	public void getEvents() throws SQLException{
+		//User input
+		System.out.println("Enter parcel tracking number:");
+		String tn = scanner.nextLine();
+		if (checkIfValidInt(tn) == false) {
+			return;
+		}
+		Integer tracking_number = Integer.valueOf(tn);
+		
+		//Preparing a statement for the query
+		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Event.description as eventdescription, Location.name as locationname FROM Event LEFT JOIN Location "
+				+ "ON Event.location_id = Location.id WHERE Event.tracking_number = ?");
+		pstatement.setInt(1, tracking_number);
+		
+		try {
+			//Executing the query
+			ResultSet rs = pstatement.executeQuery();
+			
+			System.out.println("List of events for parcel " + tracking_number + ":");
+			//Listing results
+			while (rs.next()) {
+				
+				System.out.println("Event location: " + rs.getString("locationname") + ", description: " + rs.getString("eventdescription"));
+			}
+		} catch (SQLException e) {
+			System.out.println("ERROR: There was a problem with the query. Please check your input and try again");
+			e.printStackTrace();
+		}
+		System.out.println("No more events to list");
+	}
 	//Method 1: Creating database and the required empty tables
 	//Database connection as a parameter for the method
 	public void createDatabase() throws SQLException{		
@@ -161,11 +198,11 @@ public class DatabaseHandler {
 			s.execute("CREATE TABLE Parcel (tracking_number INTEGER UNIQUE PRIMARY KEY, customer_id INTEGER, "
 					+ "FOREIGN KEY(customer_id) REFERENCES Customer(id))");
 			s.execute("CREATE TABLE Event (id INTEGER PRIMARY KEY, tracking_number INTEGER, location_id INTEGER, "
-					+ "description TEXT, date DATE, time TIME, FOREIGN KEY(tracking_number) REFERENCES Parcel(id), "
+					+ "description TEXT, date DATE, time TIME, FOREIGN KEY(tracking_number) REFERENCES Parcel(tracking_number), "
 					+ "FOREIGN KEY(location_id) REFERENCES Location(id))");
-			s.execute("CREATE TABLE Location(id INTEGER, name TEXT UNIQUE)");
+			s.execute("CREATE TABLE Location(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL)");
 		} 
-		//try-catch statement for when the user executes the command "1" more than once
+		//catch statement for when the user executes the command "1" more than once
 		catch (SQLException e) {
 			System.out.println("ERROR: Database already exists");		
 			
@@ -182,5 +219,13 @@ public class DatabaseHandler {
 		}
 		return true;
 
+	}
+	
+	public void testissa() throws SQLException{
+		PreparedStatement pstmt = dbconnection.prepareStatement("SELECT id, name FROM Location WHERE id = 1");
+		ResultSet rs = pstmt.executeQuery();
+		while(rs.next()) {
+			System.out.println(rs.getInt("id") + rs.getString("name"));
+		}
 	}
 }

@@ -14,6 +14,7 @@ public class Main {
 		DatabaseHandler dbhandler = new DatabaseHandler(parceldb, scanner);
 		
 		boolean finished = false;
+		
 		while (true) {
 			System.out.println("Enter command:");
 			Integer input = Integer.valueOf(scanner.nextLine());
@@ -32,6 +33,9 @@ public class Main {
 					break;
 				case 5:
 					dbhandler.addEvent();
+					break;
+				case 6:
+					dbhandler.getEvents();
 					break;
 				case -1:					
 					finished = true;
