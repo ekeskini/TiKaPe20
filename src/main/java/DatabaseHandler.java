@@ -56,7 +56,12 @@ public class DatabaseHandler {
 		
 		//Inputs by user
 		System.out.println("Enter parcel tracking number:");
-		Integer tracking_number = Integer.valueOf(scanner.nextLine());
+		String tn = scanner.nextLine();
+		//Checking if the input is valid
+		if (checkIfValidInt(tn) == false) {
+			return;
+		}
+		Integer tracking_number = Integer.valueOf(tn);
 		System.out.println("Enter customer name:");
 		String customer_name = scanner.nextLine();
 		
@@ -98,7 +103,11 @@ public class DatabaseHandler {
 	//Method for command 5: adding an event
 	public void addEvent() throws SQLException{
 		System.out.println("Enter parcel tracking number:");
-		Integer tracking_number = Integer.valueOf(scanner.nextLine());
+		String tn = scanner.nextLine();
+		if (checkIfValidInt(tn) == false) {
+			return;
+		}
+		Integer tracking_number = Integer.valueOf(tn);
 		System.out.println("Enter location:");
 		String location = scanner.nextLine();
 		System.out.println("Enter description of event:");
@@ -109,13 +118,14 @@ public class DatabaseHandler {
 		
 		//Preparing queries for checking the database for existing location and tracking number
 		PreparedStatement controlstatement1 = dbconnection.prepareStatement("SELECT id, COUNT(*) as count FROM Location WHERE name = (?)");
-		PreparedStatement controlstatement2 = dbconnection.prepareStatement("SELECT tracking_number, COUNT(*) as count FROM Location WHERE tracking_number = (?)");
+		PreparedStatement controlstatement2 = dbconnection.prepareStatement("SELECT tracking_number, COUNT(*) as count FROM Parcel WHERE tracking_number = (?)");
 		
 		//Executing queries
 		controlstatement1.setString(1, location);
 		controlstatement2.setInt(1, tracking_number);
 		
 		//Comparing queries to expected return values
+		//Gives an error message and returns to the main menu if the parcel/location does not exist
 		try {
 			ResultSet rs1 = controlstatement1.executeQuery();
 			ResultSet rs2 = controlstatement2.executeQuery();
@@ -145,7 +155,7 @@ public class DatabaseHandler {
 	public void createDatabase() throws SQLException{		
 		Statement s = dbconnection.createStatement();
 		
-		try {		
+		try {				
 			//Creating the necessary tables 
 			s.execute("CREATE TABLE Customer (id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL)");
 			s.execute("CREATE TABLE Parcel (tracking_number INTEGER UNIQUE PRIMARY KEY, customer_id INTEGER, "
@@ -158,7 +168,19 @@ public class DatabaseHandler {
 		//try-catch statement for when the user executes the command "1" more than once
 		catch (SQLException e) {
 			System.out.println("ERROR: Database already exists");		
-			e.printStackTrace();
+			
 		}
+	}
+	
+	public boolean checkIfValidInt(String i) {
+		try {
+			Integer.valueOf(i);
+	
+		} catch (Exception e) {
+			System.out.println("Not an integer. Please check your input");
+			return false;
+		}
+		return true;
+
 	}
 }
