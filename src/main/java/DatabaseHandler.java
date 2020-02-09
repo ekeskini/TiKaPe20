@@ -5,18 +5,32 @@ import java.util.*;
 
 public class DatabaseHandler {
 	private Connection dbconnection;
+	private Scanner scanner;
 	
 	//Constructor which injects the database to the class
-	public DatabaseHandler(Connection connection) {
+	public DatabaseHandler(Connection connection, Scanner injectedscanner) {
 		dbconnection = connection;
+		scanner = injectedscanner;
 	}
 	
-	//Method 2: Adding a location
-	public void addLocation(String name) {
-		dbconnection.prepareStatement("INSERT INTO Location, (");
+	//Method for command 2: Adding a location
+	public void addLocation() throws SQLException{
+		System.out.println("Enter location name:");
+		String name = scanner.nextLine();
 		
+		//Preparing a parametrised statement
+		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Location (name) VALUES(?)");
+		pstatement.setString(1, name);
+		
+		//Executing statement and preparing for possible errors
 		try {
-			
+			pstatement.executeUpdate();
+			System.out.println("Location added");
+		} 
+		//Error message
+		catch (SQLException e) {
+			System.out.println("ERROR: Such an location already exists");
+			e.printStackTrace();
 		}
 	}
 	
@@ -28,17 +42,18 @@ public class DatabaseHandler {
 		
 		try {		
 			//Creating the necessary tables 
-			s.execute("CREATE TABLE Customer (id INTEGER PRIMARY KEY NOT NULL, name TEXT UNIQUE NOT NULL)");
-			s.execute("CREATE TABLE Parcel (id INTEGER PRIMARY KEY NOT NULL, tracking_number INTEGER UNIQUE NOT NULL, customer_id INTEGER NOT NULL, "
+			s.execute("CREATE TABLE Customer (id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL)");
+			s.execute("CREATE TABLE Parcel (id INTEGER PRIMARY KEY, tracking_number INTEGER UNIQUE, customer_id INTEGER, "
 					+ "FOREIGN KEY(customer_id) REFERENCES Customer(id))");
-			s.execute("CREATE TABLE Event (id INTEGER PRIMARY KEY NOT NULL, parcel_id INTEGER NOT NULL, location_id INTEGER NOT NULL, "
+			s.execute("CREATE TABLE Event (id INTEGER PRIMARY KEY, parcel_id INTEGER, location_id INTEGER, "
 					+ "description TEXT, date DATE, time TIME, FOREIGN KEY(parcel_id) REFERENCES Parcel(id), "
 					+ "FOREIGN KEY(location_id) REFERENCES Location(id))");
-			s.execute("CREATE TABLE Location(id INTEGER NOT NULL, name TEXT UNIQUE)");
+			s.execute("CREATE TABLE Location(id INTEGER, name TEXT UNIQUE)");
 		} 
 		//try-catch statement for when the user executes the command "1" more than once
 		catch (SQLException e) {
-			System.out.println("Database already exists.");			
+			System.out.println("ERROR: Database already exists");		
+			e.printStackTrace();
 		}
 	}
 }
