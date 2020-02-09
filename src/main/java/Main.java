@@ -7,7 +7,7 @@ import main.java.DatabaseHandler;
 public class Main {
 
 	public static void main(String[] args) throws SQLException {
-		Connection parceldb = DriverManager.getConnection("jdbc:sqlite:parceldatabase.db");
+		Connection parceldb = DriverManager.getConnection("jdbc:sqlite:parceldatabase5.db");
 		
 		Scanner scanner = new Scanner(System.in);
 		
@@ -15,5 +15,8 @@ public class Main {
 		
 		dbhandler.createDatabase();
 		dbhandler.addCustomer();
+		dbhandler.addParcel();
+		dbhandler.addParcel();
+		dbhandler.addParcel();
 	}
 }

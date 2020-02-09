@@ -51,6 +51,45 @@ public class DatabaseHandler {
 		}
 	}
 	
+	//Method for command 4: adding a parcel
+	public void addParcel() throws SQLException {
+		System.out.println("Enter parcel tracking number:");
+		String tracking_number = scanner.nextLine();
+		System.out.println("Enter customer name:");
+		String customer_name = scanner.nextLine();
+		Integer customer_id = -1;
+		//Controlling if customer exists
+		//Preparing a parametrised query where the customer name given by the user is a parameter
+		PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) as count FROM Customer WHERE Customer.name = (?)");
+		controlstatement.setString(1, customer_name);
+		
+		try {
+			ResultSet rs = controlstatement.executeQuery();
+			if (rs.getInt("count") != 1) {
+				System.out.println("No customer with the given name exists. Please create a new customer or enter an existing customer name");
+				//Returning to the main menu in cases where the query returns more or less than one customer
+				return;
+			}
+			//Selecting the customer id for adding the parcel
+			customer_id = rs.getInt("id");
+		} 
+		catch (SQLException e) {
+			System.out.println("Problems with adding the parcel. Please check your input and try again");
+		}
+		//Preparing the statement for adding a parcel
+		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Parcel (tracking_number, customer_id) VALUES (?,?)");
+		pstatement.setInt(1, Integer.valueOf(tracking_number));
+		pstatement.setInt(2, customer_id);
+		
+		try {
+			pstatement.executeUpdate();
+			System.out.println("Parcel added");
+		}
+		catch (SQLException e) {
+			System.out.println("ERROR: Such an parcel already exists");
+		}
+	}
+	
 	
 	//Method 1: Creating database and the required empty tables
 	//Database connection as a parameter for the method
@@ -60,10 +99,10 @@ public class DatabaseHandler {
 		try {		
 			//Creating the necessary tables 
 			s.execute("CREATE TABLE Customer (id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL)");
-			s.execute("CREATE TABLE Parcel (id INTEGER PRIMARY KEY, tracking_number INTEGER UNIQUE, customer_id INTEGER, "
+			s.execute("CREATE TABLE Parcel (tracking_number INTEGER UNIQUE PRIMARY KEY, customer_id INTEGER, "
 					+ "FOREIGN KEY(customer_id) REFERENCES Customer(id))");
-			s.execute("CREATE TABLE Event (id INTEGER PRIMARY KEY, parcel_id INTEGER, location_id INTEGER, "
-					+ "description TEXT, date DATE, time TIME, FOREIGN KEY(parcel_id) REFERENCES Parcel(id), "
+			s.execute("CREATE TABLE Event (id INTEGER PRIMARY KEY, tracking_number INTEGER, location_id INTEGER, "
+					+ "description TEXT, date DATE, time TIME, FOREIGN KEY(tracking_number) REFERENCES Parcel(id), "
 					+ "FOREIGN KEY(location_id) REFERENCES Location(id))");
 			s.execute("CREATE TABLE Location(id INTEGER, name TEXT UNIQUE)");
 		} 
