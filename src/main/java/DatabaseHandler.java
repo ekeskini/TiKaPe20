@@ -7,7 +7,7 @@ public class DatabaseHandler {
 	private Connection dbconnection;
 	private Scanner scanner;
 	
-	//Constructor which injects the database to the class
+	//Constructor which injects the database and the scanner to the class
 	public DatabaseHandler(Connection connection, Scanner injectedscanner) {
 		dbconnection = connection;
 		scanner = injectedscanner;
@@ -53,12 +53,17 @@ public class DatabaseHandler {
 	
 	//Method for command 4: adding a parcel
 	public void addParcel() throws SQLException {
+		
+		//Inputs by user
 		System.out.println("Enter parcel tracking number:");
-		String tracking_number = scanner.nextLine();
+		Integer tracking_number = Integer.valueOf(scanner.nextLine());
 		System.out.println("Enter customer name:");
 		String customer_name = scanner.nextLine();
+		
+		//Preparing a variable for later use (the customer id is extracted from a query later)
 		Integer customer_id = -1;
-		//Controlling if customer exists
+		
+		//Checking if customer exists
 		//Preparing a parametrised query where the customer name given by the user is a parameter
 		PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) as count FROM Customer WHERE Customer.name = (?)");
 		controlstatement.setString(1, customer_name);
@@ -78,7 +83,7 @@ public class DatabaseHandler {
 		}
 		//Preparing the statement for adding a parcel
 		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Parcel (tracking_number, customer_id) VALUES (?,?)");
-		pstatement.setInt(1, Integer.valueOf(tracking_number));
+		pstatement.setInt(1, tracking_number);
 		pstatement.setInt(2, customer_id);
 		
 		try {
@@ -88,6 +93,50 @@ public class DatabaseHandler {
 		catch (SQLException e) {
 			System.out.println("ERROR: Such an parcel already exists");
 		}
+	}
+	
+	//Method for command 5: adding an event
+	public void addEvent() throws SQLException{
+		System.out.println("Enter parcel tracking number:");
+		Integer tracking_number = Integer.valueOf(scanner.nextLine());
+		System.out.println("Enter location:");
+		String location = scanner.nextLine();
+		System.out.println("Enter description of event:");
+		String description = scanner.nextLine();
+		
+		//Preparing variable for later use (the actual value is extracted from a query later)
+		Integer location_id = -1;
+		
+		//Preparing queries for checking the database for existing location and tracking number
+		PreparedStatement controlstatement1 = dbconnection.prepareStatement("SELECT id, COUNT(*) as count FROM Location WHERE name = (?)");
+		PreparedStatement controlstatement2 = dbconnection.prepareStatement("SELECT tracking_number, COUNT(*) as count FROM Location WHERE tracking_number = (?)");
+		
+		//Executing queries
+		controlstatement1.setString(1, location);
+		controlstatement2.setInt(1, tracking_number);
+		
+		//Comparing queries to expected return values
+		try {
+			ResultSet rs1 = controlstatement1.executeQuery();
+			ResultSet rs2 = controlstatement2.executeQuery();
+			if (rs1.getInt("count") != 1) {
+				System.out.println("No location with the given name exists. Please create a new location or enter a valid location name");
+				return;
+			}
+			if (rs2.getInt("count") != 1) {
+				System.out.println("No parcel with the given tracking number exists. Please create a new location or enter a valid location name");
+				return;
+			}
+			location_id = rs1.getInt("id");
+		} catch (SQLException e){
+			System.out.println("Problems with adding the event. Please check your input and try again");
+		}
+		
+		//Preparing statement for adding a parcel
+		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Event (tracking_number, location_id, description) VALUES (?, ?, ?)");
+		pstatement.setInt(1, tracking_number);
+		pstatement.setInt(2, location_id);
+		pstatement.setString(3, description);
 	}
 	
 	
