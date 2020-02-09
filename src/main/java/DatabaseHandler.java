@@ -30,7 +30,24 @@ public class DatabaseHandler {
 		//Error message
 		catch (SQLException e) {
 			System.out.println("ERROR: Such an location already exists");
-			e.printStackTrace();
+		}
+	}
+	
+	//Method for command 3: adding a customer
+	public void addCustomer() throws SQLException{
+		System.out.println("Enter customer name:");
+		String name = scanner.nextLine();
+		
+		//Preparing a parametrised statement
+		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Customer (name) Values(?)");
+		pstatement.setString(1, name);
+		
+		try {
+			pstatement.executeUpdate();
+			System.out.println("Customer added");
+		}
+		catch (SQLException e) {
+			System.out.println("ERROR: Such an customer already exists");
 		}
 	}
 	
