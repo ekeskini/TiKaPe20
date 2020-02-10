@@ -62,7 +62,7 @@ public class DatabaseHandler {
 			return;
 		}
 		Integer tracking_number = Integer.valueOf(tn);
-		System.out.println("Enter customer name:");
+		System.out.println("Enter customer name for parcel:");
 		String customer_name = scanner.nextLine();
 		
 		//Preparing a variable for later use (the customer id is extracted from a query later)
@@ -152,7 +152,7 @@ public class DatabaseHandler {
 			pstatement.executeUpdate();
 			System.out.println("Event added");
 		} catch (SQLException e) {
-			System.out.println("ERROR: There was a problem with adding the event. Please check your input and try again");
+			System.out.println(genericErrorMessage());
 		}
 	}
 	
@@ -182,11 +182,53 @@ public class DatabaseHandler {
 				System.out.println("Event location: " + rs.getString("locationname") + ", description: " + rs.getString("eventdescription"));
 			}
 		} catch (SQLException e) {
-			System.out.println("ERROR: There was a problem with the query. Please check your input and try again");
+			System.out.println(genericErrorMessage());
 			e.printStackTrace();
 		}
 		System.out.println("No more events to list");
 	}
+	
+	//Method for command 7: listing parcels and the count of events per parcel for given customer
+	public void getParcels() throws SQLException{
+		System.out.println("Enter customer name:");
+		String customername = scanner.nextLine();
+		
+		//Preparing variable for later use (correct value extracted in query later)
+		Integer customerid = -1;
+		PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) AS count FROM Customer WHERE name = (?)");
+		controlstatement.setString(1, customername);
+		
+		try {
+			ResultSet rs = controlstatement.executeQuery();
+			
+			if (rs.getInt("count") != 1) {
+				System.out.println("No customer with the given name exists. Please check your input and try again");
+				return;
+			}
+			customerid = rs.getInt("id");
+		} catch (SQLException e){
+			System.out.println(genericErrorMessage());
+		}
+		
+		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Parcel.tracking_number AS tn, COALESCE(COUNT(Event.id), 0) AS count FROM Parcel "
+				+ "LEFT JOIN Event ON Event.tracking_number = Parcel.tracking_number "
+				+ "WHERE Parcel.customer_id = (?) "
+				+ "GROUP BY tn");
+		pstatement.setInt(1, customerid);
+		
+		try {
+			ResultSet rs2 = pstatement.executeQuery();
+			
+			while(rs2.next()) {
+				System.out.println("Parcels for customer " + customername + ":");
+				System.out.println(rs2.getInt("tn") + ", number of events: " + rs2.getInt("count"));
+			}
+		} catch (SQLException e) {
+			System.out.println(genericErrorMessage());
+		}
+		System.out.println("No more parcels to list.");		
+	}
+	
 	//Method 1: Creating database and the required empty tables
 	//Database connection as a parameter for the method
 	public void createDatabase() throws SQLException{		
@@ -220,7 +262,10 @@ public class DatabaseHandler {
 		return true;
 
 	}
-	
+	//Generic error message for uncommon situations
+	public String genericErrorMessage() {
+		return "ERROR: There was a problem with the query. Please check your input and try again";
+	}
 	public void testissa() throws SQLException{
 		PreparedStatement pstmt = dbconnection.prepareStatement("SELECT id, name FROM Location WHERE id = 1");
 		ResultSet rs = pstmt.executeQuery();

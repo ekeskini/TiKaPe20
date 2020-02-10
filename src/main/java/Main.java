@@ -17,8 +17,13 @@ public class Main {
 		
 		while (true) {
 			System.out.println("Enter command:");
-			Integer input = Integer.valueOf(scanner.nextLine());
-			switch(input) {
+			String input = scanner.nextLine();
+			if (dbhandler.checkIfValidInt(input) == false) {
+				System.out.println("Not a valid command. Enter a number between 0-9, -1 to end the program");
+				continue;
+			}
+			Integer i = Integer.valueOf(input);
+			switch(i) {
 				case 1:
 					dbhandler.createDatabase();
 					break;
@@ -36,6 +41,9 @@ public class Main {
 					break;
 				case 6:
 					dbhandler.getEvents();
+					break;
+				case 7:
+					dbhandler.getParcels();
 					break;
 				case -1:					
 					finished = true;
