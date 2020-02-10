@@ -195,32 +195,42 @@ public class DatabaseHandler {
 		
 		//Preparing variable for later use (correct value extracted in query later)
 		Integer customerid = -1;
+		
+		//Preparing statement for checking if named customer exists
 		PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) AS count FROM Customer WHERE name = (?)");
 		controlstatement.setString(1, customername);
 		
+		//Checking for the existence of named customer
 		try {
 			ResultSet rs = controlstatement.executeQuery();
 			
+			//If there is no customer or there (for some reason) are more customers than 1 with the same name
 			if (rs.getInt("count") != 1) {
 				System.out.println("No customer with the given name exists. Please check your input and try again");
 				return;
 			}
+			//Extracting customer id
 			customerid = rs.getInt("id");
 		} catch (SQLException e){
 			System.out.println(genericErrorMessage());
 		}
 		
+		//Preparing statement for wanted query
 		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Parcel.tracking_number AS tn, COALESCE(COUNT(Event.id), 0) AS count FROM Parcel "
 				+ "LEFT JOIN Event ON Event.tracking_number = Parcel.tracking_number "
 				+ "WHERE Parcel.customer_id = (?) "
-				+ "GROUP BY tn");
+				+ "GROUP BY tn "
+				+ "ORDER BY count DESC");
+		
 		pstatement.setInt(1, customerid);
 		
+		//Executing query and listing parcels + amount of events concerning each parcel
+		System.out.println("Parcels for customer " + customername + ":");
 		try {
 			ResultSet rs2 = pstatement.executeQuery();
 			
 			while(rs2.next()) {
-				System.out.println("Parcels for customer " + customername + ":");
+				
 				System.out.println(rs2.getInt("tn") + ", number of events: " + rs2.getInt("count"));
 			}
 		} catch (SQLException e) {
