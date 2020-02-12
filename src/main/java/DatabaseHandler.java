@@ -1,6 +1,8 @@
 package main.java;
 
 import java.sql.*;
+import java.sql.Date;
+import java.time.Instant;
 import java.util.*;
 
 public class DatabaseHandler {
@@ -13,13 +15,13 @@ public class DatabaseHandler {
 		scanner = injectedscanner;
 	}
 	
-	//Method for command 2: Adding a location
+	//Procedure for command 2: Adding a location
 	public void addLocation() throws SQLException{
 		System.out.println("Enter location name:");
 		String name = scanner.nextLine();
 		
 		//Preparing a parametrised statement
-		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Location(name) VALUES (?)");
+		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Location(name) VALUES (?);");
 		pstatement.setString(1, name);
 		
 		//Executing statement and preparing for possible errors
@@ -33,7 +35,7 @@ public class DatabaseHandler {
 		}
 	}
 	
-	//Method for command 3: adding a customer
+	//Procedure for command 3: adding a customer
 	public void addCustomer() throws SQLException{
 		System.out.println("Enter customer name:");
 		String name = scanner.nextLine();
@@ -51,14 +53,14 @@ public class DatabaseHandler {
 		}
 	}
 	
-	//Method for command 4: adding a parcel
+	//Procedure for command 4: adding a parcel
 	public void addParcel() throws SQLException {
 		
 		//Inputs by user
 		System.out.println("Enter parcel tracking number:");
 		String tn = scanner.nextLine();
 		//Checking if the input is valid
-		if (checkIfValidInt(tn) == false) {
+		if (checkIfValidIntWMessage(tn) == false) {
 			return;
 		}
 		Integer tracking_number = Integer.valueOf(tn);
@@ -96,15 +98,15 @@ public class DatabaseHandler {
 			System.out.println("Parcel added");
 		}
 		catch (SQLException e) {
-			System.out.println("ERROR: Such an parcel already exists");
+			System.out.println("Such an parcel already exists");
 		}
 	}
 	
-	//Method for command 5: adding an event
+	//Procedure for command 5: adding an event
 	public void addEvent() throws SQLException{
 		System.out.println("Enter parcel tracking number:");
 		String tn = scanner.nextLine();
-		if (checkIfValidInt(tn) == false) {
+		if (checkIfValidIntWMessage(tn) == false) {
 			return;
 		}
 		Integer tracking_number = Integer.valueOf(tn);
@@ -141,12 +143,16 @@ public class DatabaseHandler {
 		} catch (SQLException e){
 			System.out.println("Problems with adding the event. Please check your input and try again");
 		}
+		Date date = Date.valueOf(java.time.LocalDate.now());
+		Time time = Time.valueOf(java.time.LocalTime.now());
 		
 		//Preparing statement for adding a parcel
-		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Event (tracking_number, location_id, description) VALUES (?, ?, ?)");
+		PreparedStatement pstatement = dbconnection.prepareStatement("INSERT INTO Event (tracking_number, location_id, description, date, time) VALUES (?, ?, ?, ?, ?)");
 		pstatement.setInt(1, tracking_number);
 		pstatement.setInt(2, location_id);
 		pstatement.setString(3, description);
+		pstatement.setDate(4, date);
+		pstatement.setTime(5, time);
 		
 		try {
 			pstatement.executeUpdate();
@@ -156,18 +162,19 @@ public class DatabaseHandler {
 		}
 	}
 	
-	//Method for command 6: listing events of a certain parcel
+	//Procedure for command 6: listing events of a certain parcel
 	public void getEvents() throws SQLException{
 		//User input
 		System.out.println("Enter parcel tracking number:");
 		String tn = scanner.nextLine();
-		if (checkIfValidInt(tn) == false) {
+		if (checkIfValidIntWMessage(tn) == false) {
 			return;
 		}
 		Integer tracking_number = Integer.valueOf(tn);
 		
 		//Preparing a statement for the query
-		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Event.description as eventdescription, Location.name as locationname FROM Event LEFT JOIN Location "
+		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Event.description as eventdescription, Location.name as locationname, "
+				+ "Event.date AS d, Event.time AS t FROM Event LEFT JOIN Location "
 				+ "ON Event.location_id = Location.id WHERE Event.tracking_number = ?");
 		pstatement.setInt(1, tracking_number);
 		
@@ -179,16 +186,16 @@ public class DatabaseHandler {
 			//Listing results
 			while (rs.next()) {
 				
-				System.out.println("Event location: " + rs.getString("locationname") + ", description: " + rs.getString("eventdescription"));
+				System.out.println("Time: " + rs.getDate("d") + " " + rs.getTime("t") + ", location: " + rs.getString("locationname") + ", description: " + rs.getString("eventdescription"));
 			}
 		} catch (SQLException e) {
 			System.out.println(genericErrorMessage());
 			e.printStackTrace();
 		}
-		System.out.println("No more events to list");
+		System.out.println("No more events to list.");
 	}
 	
-	//Method for command 7: listing parcels and the count of events per parcel for given customer
+	//Procedure for command 7: listing parcels and the count of events per parcel for given customer
 	public void getParcels() throws SQLException{
 		System.out.println("Enter customer name:");
 		String customername = scanner.nextLine();
@@ -220,7 +227,7 @@ public class DatabaseHandler {
 				+ "LEFT JOIN Event ON Event.tracking_number = Parcel.tracking_number "
 				+ "WHERE Parcel.customer_id = (?) "
 				+ "GROUP BY tn "
-				+ "ORDER BY count DESC");
+				+ "ORDER BY tn");
 		
 		pstatement.setInt(1, customerid);
 		
@@ -239,8 +246,74 @@ public class DatabaseHandler {
 		System.out.println("No more parcels to list.");		
 	}
 	
-	//Method 1: Creating database and the required empty tables
-	//Database connection as a parameter for the method
+	//Procedure for command 8: listing events in a specific location on a certain date
+	public void getEventsInLocation() throws SQLException{
+		System.out.println("Enter location name:");
+		String locationname = scanner.nextLine();
+		
+		//Setting up a date-type variable
+		Date d = Date.valueOf("0000-01-01");
+		
+		System.out.println("Enter date (format YYYY-MM-DD), with the current date as input 'today':");
+		//Setting the date-type object to the wanted date
+		while (true) {	
+						
+			String date = scanner.nextLine();
+			
+			if (date.equals("today")) {
+				d = Date.valueOf(java.time.LocalDate.now());
+				break;
+			}
+			//Checking if input is of correct format
+			try {
+				//If it is, change the value of the variable d to the wanted date
+				d = Date.valueOf(date);
+			} catch (Exception e) {
+				System.out.println(genericErrorMessage());
+				continue;
+			}					
+			break;
+		}
+		
+		//Preparing variable for later use
+		Integer locationid = -1;
+		
+		//Preparing statement for extracting the location id based on the location name
+		PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) AS count FROM Location WHERE name = ?");
+		controlstatement.setString(1, locationname);
+		
+		try {
+			ResultSet rs = controlstatement.executeQuery();
+			
+			if(rs.getInt("count") != 1){
+				System.out.println("No location with the given name exists. Please check your input and try again");
+				return;
+			}
+			locationid = rs.getInt("id");
+		} catch (SQLException e) {
+			System.out.println(genericErrorMessage());
+		}
+		
+		//Preparing the main query, using the location id and date as parameters
+		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT COUNT(*) AS count FROM Event WHERE location_id = ? AND date = ?");
+		pstatement.setInt(1, locationid);
+		pstatement.setDate(2, d);
+		
+		try {
+			ResultSet rs = pstatement.executeQuery();
+			while(rs.next()) {
+				System.out.println("Events in location " + locationname + " on date " + d.toString() + ": " + rs.getInt("count"));
+			}
+		} catch (SQLException e) {
+			System.out.println(genericErrorMessage());
+		}
+	}
+	
+	//Procedure 9: efficiency test
+	
+	
+	//Procedure 1: Creating database and the required empty tables
+	//Database connection as a parameter for the Procedure
 	public void createDatabase() throws SQLException{		
 		Statement s = dbconnection.createStatement();
 		
@@ -260,8 +333,8 @@ public class DatabaseHandler {
 			
 		}
 	}
-	
-	public boolean checkIfValidInt(String i) {
+	//Checking if input is a valid integer (with an error message)
+	public boolean checkIfValidIntWMessage(String i) {
 		try {
 			Integer.valueOf(i);
 	
@@ -269,18 +342,22 @@ public class DatabaseHandler {
 			System.out.println("Not an integer. Please check your input");
 			return false;
 		}
-		return true;
-
+		return true;		
 	}
+	//Checking if input is a valid integer (without an error message)
+	public boolean checkIfValidInt(String i) {
+		try {
+			Integer.valueOf(i);
+	
+		} catch (Exception e) {
+			return false;
+		}
+		return true;		
+	}
+	
 	//Generic error message for uncommon situations
 	public String genericErrorMessage() {
-		return "ERROR: There was a problem with the query. Please check your input and try again";
+		return "ERROR: An error occured. Please check your input and try again";
 	}
-	public void testissa() throws SQLException{
-		PreparedStatement pstmt = dbconnection.prepareStatement("SELECT id, name FROM Location WHERE id = 1");
-		ResultSet rs = pstmt.executeQuery();
-		while(rs.next()) {
-			System.out.println(rs.getInt("id") + rs.getString("name"));
-		}
-	}
+	
 }

@@ -45,6 +45,9 @@ public class Main {
 				case 7:
 					dbhandler.getParcels();
 					break;
+				case 8:
+					dbhandler.getEventsInLocation();
+					break;
 				case -1:					
 					finished = true;
 					break;
