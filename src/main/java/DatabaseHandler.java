@@ -196,152 +196,169 @@ public class DatabaseHandler {
 			System.out.println(genericErrorMessage());
 			dbconnection.rollback();
 		}
-		dbconnection.rollback();
+
+		dbconnection.setAutoCommit(true);
 	}
 
 	//Procedure for command 6: listing events of a certain parcel
 	public void getEvents() throws SQLException{
-		System.out.println("Enter parcel tracking number:");
-		String tn = scanner.nextLine();
-		if (checkIfValidIntWMessage(tn) == false) {
-			return;
-		}
-		Integer tracking_number = Integer.valueOf(tn);
-
-		//Preparing a statement for the query
-		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Event.description as eventdescription, Location.name as locationname, "
-				+ "Event.date AS d, Event.time AS t FROM Event LEFT JOIN Location "
-				+ "ON Event.location_id = Location.id WHERE Event.tracking_number = ?");
-		pstatement.setInt(1, tracking_number);
-
+		dbconnection.setAutoCommit(false);
 		try {
-			//Executing the query
-			ResultSet rs = pstatement.executeQuery();
+			System.out.println("Enter parcel tracking number:");
+			String tn = scanner.nextLine();
+			if (checkIfValidIntWMessage(tn) == false) {
+				return;
+			}
+			Integer tracking_number = Integer.valueOf(tn);
 
-			System.out.println("List of events for parcel " + tracking_number + ":");
-			//Listing results
-			while (rs.next()) {
+			//Preparing a statement for the query
+			PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Event.description as eventdescription, Location.name as locationname, "
+					+ "Event.date AS d, Event.time AS t FROM Event LEFT JOIN Location "
+					+ "ON Event.location_id = Location.id WHERE Event.tracking_number = ?");
+			pstatement.setInt(1, tracking_number);
 
-				System.out.println("Time: " + rs.getDate("d") + " " + rs.getTime("t") + ", location: " + rs.getString("locationname") + ", description: " + rs.getString("eventdescription"));
+			try {
+				//Executing the query
+				ResultSet rs = pstatement.executeQuery();
+				dbconnection.commit();
+				System.out.println("List of events for parcel " + tracking_number + ":");
+				//Listing results
+				while (rs.next()) {
+
+					System.out.println("Time: " + rs.getDate("d") + " " + rs.getTime("t") + ", location: " + rs.getString("locationname") + ", description: " + rs.getString("eventdescription"));
+				}
+			} catch (SQLException e) {
+				System.out.println(genericErrorMessage());
 			}
 		} catch (SQLException e) {
 			System.out.println(genericErrorMessage());
-			e.printStackTrace();
 		}
-
+		dbconnection.setAutoCommit(true);
 	}
 
 	//Procedure for command 7: listing parcels and the count of events per parcel for given customer
 	public void getParcels() throws SQLException{
-		System.out.println("Enter customer name:");
-		String customername = scanner.nextLine();
-		//Preparing variable for later use (correct value extracted in query later)
-		Integer customerid = -1;
-
-		//Preparing statement for checking if named customer exists
-		PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) AS count FROM Customer WHERE name = (?)");
-		controlstatement.setString(1, customername);
-
-		//Checking for the existence of named customer
+		dbconnection.setAutoCommit(false);
 		try {
-			ResultSet rs = controlstatement.executeQuery();
+			System.out.println("Enter customer name:");
+			String customername = scanner.nextLine();
+			//Preparing variable for later use (correct value extracted in query later)
+			Integer customerid = -1;
 
-			//If there is no customer or there (for some reason) are more customers than 1 with the same name
-			if (rs.getInt("count") != 1) {
-				System.out.println("No customer with the given name exists. Please check your input and try again");
-				return;
+			//Preparing statement for checking if named customer exists
+			PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) AS count FROM Customer WHERE name = (?)");
+			controlstatement.setString(1, customername);
+
+			//Checking for the existence of named customer
+			try {
+				ResultSet rs = controlstatement.executeQuery();
+
+				//If there is no customer or there (for some reason) are more customers than 1 with the same name
+				if (rs.getInt("count") != 1) {
+					System.out.println("No customer with the given name exists. Please check your input and try again");
+					return;
+				}
+				//Extracting customer id
+				customerid = rs.getInt("id");
+			} catch (SQLException e){
+				System.out.println(genericErrorMessage());
 			}
-			//Extracting customer id
-			customerid = rs.getInt("id");
-		} catch (SQLException e){
-			System.out.println(genericErrorMessage());
-		}
 
-		//Preparing statement for wanted query
-		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Parcel.tracking_number AS tn, COALESCE(COUNT(Event.id), 0) AS count FROM Parcel "
-				+ "LEFT JOIN Event ON Event.tracking_number = Parcel.tracking_number "
-				+ "WHERE Parcel.customer_id = (?) "
-				+ "GROUP BY tn "
-				+ "ORDER BY tn");
+			//Preparing statement for wanted query
+			PreparedStatement pstatement = dbconnection.prepareStatement("SELECT Parcel.tracking_number AS tn, COALESCE(COUNT(Event.id), 0) AS count FROM Parcel "
+					+ "LEFT JOIN Event ON Event.tracking_number = Parcel.tracking_number "
+					+ "WHERE Parcel.customer_id = (?) "
+					+ "GROUP BY tn "
+					+ "ORDER BY tn");
 
-		pstatement.setInt(1, customerid);
+			pstatement.setInt(1, customerid);
 
-		//Executing query and listing parcels + amount of events concerning each parcel
-		System.out.println("Parcels for customer " + customername + ":");
-		try {
-			ResultSet rs2 = pstatement.executeQuery();
+			//Executing query and listing parcels + amount of events concerning each parcel
+			System.out.println("Parcels for customer " + customername + ":");
+			try {
+				ResultSet rs2 = pstatement.executeQuery();
+				dbconnection.commit();
+				while(rs2.next()) {
 
-			while(rs2.next()) {
-
-				System.out.println(rs2.getInt("tn") + ", number of events: " + rs2.getInt("count"));
+					System.out.println(rs2.getInt("tn") + ", number of events: " + rs2.getInt("count"));
+				}
+			} catch (SQLException e) {
+				System.out.println(genericErrorMessage());
 			}
 		} catch (SQLException e) {
 			System.out.println(genericErrorMessage());
 		}
-
+		dbconnection.setAutoCommit(true);
 	}
 
 	//Procedure for command 8: listing events in a specific location on a certain date
 	public void getEventsInLocation() throws SQLException{
-		System.out.println("Enter location name:");
-		String locationname = scanner.nextLine();
+		dbconnection.setAutoCommit(false);
+		try {
+			System.out.println("Enter location name:");
+			String locationname = scanner.nextLine();
 
-		//Setting up a date-type variable
-		Date d = Date.valueOf("0000-01-01");
+			//Setting up a date-type variable
+			Date d = Date.valueOf("0000-01-01");
 
-		System.out.println("Enter date (format YYYY-MM-DD), with the current date as input 'today':");
-		//Setting the date-type object to the wanted date
-		while (true) {	
+			System.out.println("Enter date (format YYYY-MM-DD), with the current date as input 'today':");
+			//Setting the date-type object to the wanted date
+			while (true) {	
 
-			String date = scanner.nextLine();
+				String date = scanner.nextLine();
 
-			if (date.equals("today")) {
-				d = Date.valueOf(java.time.LocalDate.now());
+				if (date.equals("today")) {
+					d = Date.valueOf(java.time.LocalDate.now());
+					break;
+				}
+				//Checking if input is of correct format
+				try {
+					//If it is, change the value of the variable d to the wanted date
+					d = Date.valueOf(date);
+				} catch (Exception e) {
+					System.out.println(genericErrorMessage());
+					continue;
+				}					
 				break;
 			}
-			//Checking if input is of correct format
+
+			//Preparing variable for later use
+			Integer locationid = -1;
+
+			//Preparing statement for extracting the location id based on the location name
+			PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) AS count FROM Location WHERE name = ?");
+			controlstatement.setString(1, locationname);
+
 			try {
-				//If it is, change the value of the variable d to the wanted date
-				d = Date.valueOf(date);
-			} catch (Exception e) {
+				ResultSet rs = controlstatement.executeQuery();
+
+				if(rs.getInt("count") != 1){
+					System.out.println("No location with the given name exists. Please check your input and try again");
+					return;
+				}
+				locationid = rs.getInt("id");
+			} catch (SQLException e) {
 				System.out.println(genericErrorMessage());
-				continue;
-			}					
-			break;
-		}
-
-		//Preparing variable for later use
-		Integer locationid = -1;
-
-		//Preparing statement for extracting the location id based on the location name
-		PreparedStatement controlstatement = dbconnection.prepareStatement("SELECT id, COUNT(*) AS count FROM Location WHERE name = ?");
-		controlstatement.setString(1, locationname);
-
-		try {
-			ResultSet rs = controlstatement.executeQuery();
-
-			if(rs.getInt("count") != 1){
-				System.out.println("No location with the given name exists. Please check your input and try again");
-				return;
 			}
-			locationid = rs.getInt("id");
-		} catch (SQLException e) {
-			System.out.println(genericErrorMessage());
-		}
 
-		//Preparing the main query, using the location id and date as parameters
-		PreparedStatement pstatement = dbconnection.prepareStatement("SELECT COUNT(*) AS count FROM Event WHERE location_id = ? AND date = ?");
-		pstatement.setInt(1, locationid);
-		pstatement.setDate(2, d);
+			//Preparing the main query, using the location id and date as parameters
+			PreparedStatement pstatement = dbconnection.prepareStatement("SELECT COUNT(*) AS count FROM Event WHERE location_id = ? AND date = ?");
+			pstatement.setInt(1, locationid);
+			pstatement.setDate(2, d);
 
-		try {
-			ResultSet rs = pstatement.executeQuery();
-			while(rs.next()) {
-				System.out.println("Events in location " + locationname + " on date " + d.toString() + ": " + rs.getInt("count"));
+			try {
+				ResultSet rs = pstatement.executeQuery();
+				dbconnection.commit();
+				while(rs.next()) {
+					System.out.println("Events in location " + locationname + " on date " + d.toString() + ": " + rs.getInt("count"));
+				}
+			} catch (SQLException e) {
+				System.out.println(genericErrorMessage());
 			}
 		} catch (SQLException e) {
 			System.out.println(genericErrorMessage());
 		}
+		dbconnection.setAutoCommit(true);
 	}
 
 	//Procedure 9: efficiency test
@@ -406,7 +423,6 @@ public class DatabaseHandler {
 			System.out.println("Time passed while adding events: " + (eventend - eventstart)/1e9 + " seconds");
 			dbconnection.commit();
 		} catch (SQLException e) {
-			e.printStackTrace();
 			dbconnection.rollback();
 		}
 		try {
@@ -422,7 +438,6 @@ public class DatabaseHandler {
 			dbconnection.commit();
 			System.out.println("Query time for test part 1: " + (time2 - time1)/1e9 + " seconds");
 		} catch (SQLException e) {
-			e.printStackTrace();
 			dbconnection.rollback();
 		}
 
@@ -439,7 +454,6 @@ public class DatabaseHandler {
 			dbconnection.commit();
 			System.out.println("Query time for test part 2: " + (time2 - time1)/1e9 + " seconds");
 		} catch (SQLException e) {
-			e.printStackTrace();
 			dbconnection.rollback();
 		}
 
@@ -503,29 +517,29 @@ public class DatabaseHandler {
 		try {
 			dbconnection.setAutoCommit(false);
 			Statement s = dbconnection.createStatement();
-			
+
 			s.execute("DELETE FROM Parcel");
 			s.execute("DELETE FROM Customer");
 			s.execute("DELETE FROM Event");
 			s.execute("DELETE FROM Location");
-			
+
 			dbconnection.commit();
-			
+
 		} catch (SQLException e) {
 			dbconnection.rollback();
 		}
-		
+
 		//Clearing possible indexes
 		try {
 			Statement s = dbconnection.createStatement();
-			
+
 			s.execute("DROP INDEX idx_customername");
 			s.execute("DROP INDEX idx_parcelcustomerid");
 			s.execute("DROP INDEX idx_eventn");
-			
+
 			dbconnection.commit();
 		} catch (SQLException e) {
-			
+
 		}
 		dbconnection.setAutoCommit(true);
 	}
